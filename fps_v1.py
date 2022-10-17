@@ -1,14 +1,16 @@
 import numpy as np
-
+import torch
+    
 class FPS:
     def __init__(self, pcd_xyz, n_samples):
+        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         self.n_samples = n_samples
         self.pcd_xyz = pcd_xyz
         self.n_pts = pcd_xyz.shape[0]
         self.dim = pcd_xyz.shape[1]
         self.selected_pts = None
-        self.selected_pts_expanded = np.zeros(shape=(n_samples, 1, self.dim))
-        self.remaining_pts = np.copy(pcd_xyz)
+        self.selected_pts_expanded = torch.zeros(size=(n_samples, 1, self.dim)).to(self.device)
+        self.remaining_pts = torch.from_numpy(pcd_xyz).double().to(self.device)
 
         self.grouping_radius = None
         self.dist_pts_to_selected = None  # Iteratively updated in step(). Finally re-used in group()
@@ -20,14 +22,14 @@ class FPS:
         self.n_selected_pts = 1
 
     def get_selected_pts(self):
-        self.selected_pts = np.squeeze(self.selected_pts_expanded, axis=1)
-        return self.selected_pts
+        self.selected_pts = torch.squeeze(self.selected_pts_expanded, dim=1)
+        return self.selected_pts.cpu()
 
     def step(self):
         if self.n_selected_pts < self.n_samples:
             self.dist_pts_to_selected = self.__distance__(self.remaining_pts, self.selected_pts_expanded[:self.n_selected_pts]).T
-            dist_pts_to_selected_min = np.min(self.dist_pts_to_selected, axis=1, keepdims=True)
-            res_selected_idx = np.argmax(dist_pts_to_selected_min)
+            dist_pts_to_selected_min, _ = torch.min(self.dist_pts_to_selected, dim=1, keepdim=True)
+            res_selected_idx = torch.argmax(dist_pts_to_selected_min)
             self.selected_pts_expanded[self.n_selected_pts] = self.remaining_pts[res_selected_idx]
 
             self.n_selected_pts += 1
@@ -54,5 +56,5 @@ class FPS:
 
 
     @staticmethod
-    def __distance__(a, b):
-        return np.linalg.norm(a - b, ord=2, axis=2)
+    def __distance__(a, b):        
+        return torch.norm(a - b, p=2, dim=2)
