@@ -59,7 +59,7 @@ if __name__ == '__main__':
 
             pcd_selected.points = o3d.utility.Vector3dVector(fps.get_selected_pts())
             pcd_selected.paint_uniform_color([1, 0, 0])  # selected:  red
-            vis.update_geometry()
+            vis.update_geometry(pcd_selected)
 
 
         key_to_callback = {ord("N"): fit_step_callback}
